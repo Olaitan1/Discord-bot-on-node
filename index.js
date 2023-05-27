@@ -1,4 +1,5 @@
 const { Client, GatewayIntentBits } = require('discord.js');
+const { DISCORD_TOKEN } = require('./config');
 // const { DISCORD_TOKEN } = require('./config.js');
 const client = new Client({
     intents: [
@@ -70,4 +71,6 @@ client.on('messageCreate', (message) =>
         
     })
 })
-client.login('MTExMDI3ODg0ODY5MzY3NDA3NA.Gqp_Rt.58HRO4aHSGR5fgZtbywmGAzNHcmM2d2IHB16w8');
+client.login(DISCORD_TOKEN);
+
+

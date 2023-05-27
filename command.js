@@ -14,7 +14,7 @@ try
 {
   console.log('Started refreshing application (/) commands.');
 
-    await rest.put(Routes.applicationCommands('1110278848693674074'), {
+    await rest.put(Routes.applicationCommands(CLIENT_ID), {
         body: commands
     });
 
