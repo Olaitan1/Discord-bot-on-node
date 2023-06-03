@@ -181,7 +181,28 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
+app.get('/tickets/:id',async (req, res) =>
+{
+  try
+  {
+    const ticketId = req.params.id;
 
+    // Find the ticket by its ID using the Ticket model
+    const ticket = await Ticket.findById(ticketId);
+
+    // If the ticket is not found, return a 404 response
+    if (!ticket)
+    {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    res.json(ticket);
+  } catch (error)
+  {
+    console.error('Error retrieving ticket:', error);
+    res.status(500).json({ error: 'Failed to retrieve ticket' });
+  }
+});
   // Start the server
   app.listen(port, () =>
   {
