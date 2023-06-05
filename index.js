@@ -9,7 +9,7 @@ const Discord = require('discord.js');
 const { MessageEmbed } = require('discord.js');
 const { DISCORD_TOKEN } = require('./config');
 const { MONGODB_URL } = require('./config');
-const { getTicketById, getTicketByAssignee} = require('./controller.js');
+// const { getTicketById, getTicketByAssignee} = require('./controller.js');
 const Ticket = require('./model')
 
 const { REST, Routes } = require('discord.js');
@@ -53,9 +53,11 @@ client.on('messageCreate', (message) =>
   
   client.login(DISCORD_TOKEN);
   
-
-  app.use(express.json());
-  
+ mongoose.connect(process.env.MONGODB_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+ 
   const commands = [
     {
       name: 'ticket',
@@ -87,6 +89,18 @@ client.on('messageCreate', (message) =>
         }
       ],
     },
+    {
+      name: 'get-ticket',
+      description: 'Replies with a ticket',
+      options: [
+        {
+          name: 'id',
+          description: 'The id of the ticket',
+          type: 3,
+          required: true,
+        }
+      ]
+    }
   ];
 
   const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
@@ -112,25 +126,33 @@ const saveTicketToDatabase = async (ticketDetails) =>
   try {
     console.log('Saving ticket to the database:', ticketDetails);
 
-    await mongoose.connect(process.env.MONGODB_URL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-
     const newTicket = new Ticket(ticketDetails);
     await newTicket.save();
     console.log('Ticket saved:', newTicket);
 
-    mongoose.connection.close();
   } catch (error) {
     console.error('Error saving ticket to the database:', error);
   }
+ 
+};
+const getTicketById = async (ticketId) => {
+  try {
+    // Assuming you have a Ticket model defined and imported from your MongoDB schema
+    const ticket = await Ticket.findById(ticketId);
+    return ticket;
+  } catch (error) {
+    console.error('Error retrieving ticket:', error);
+    return null;
+  }
 };
 
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isCommand()) return;
 
-  if (interaction.commandName === 'ticket') {
+client.on('interactionCreate', async (interaction) =>
+{
+  if (!interaction.isCommand()) return;
+  const { commandName, options } = interaction;
+  if (interaction.commandName === 'ticket')
+  {
     const tableHeaders = ['board', 'stage', 'assignee', 'level'];
     const ticketDetails = {
       board: interaction.options.getString('board'),
@@ -143,11 +165,13 @@ client.on('interactionCreate', async (interaction) => {
       10
     )} | ${' '.repeat(7)} | ${' '.repeat(10)} | ${' '.repeat(7)}\`\`\``;
 
-    const processResponse = async (response) => {
+    const processResponse = async (response) =>
+    {
       const column = tableHeaders[Object.keys(ticketDetails).length];
       ticketDetails[column] = response.content;
 
-      if (Object.values(ticketDetails).length === tableHeaders.length) {
+      if (Object.values(ticketDetails).length === tableHeaders.length)
+      {
         const ticketRow = Object.values(ticketDetails).join(' | ');
         const ticketRowString = `| ${ticketRow} |`;
         const updatedTable = `${table}\n${ticketRowString}`;
@@ -174,36 +198,45 @@ client.on('interactionCreate', async (interaction) => {
       max: tableHeaders.length,
       time: 60000,
     });
-            await saveTicketToDatabase(ticketDetails)
+    await saveTicketToDatabase(ticketDetails)
 
     await interaction.followUp({ content: 'Ticket creation complete!', ephemeral: true });
     
-  }
-});
+  // }else 
+  //   if (interaction.commandName === 'get-ticket')
+  //   {
+  
+  //     const ticketId = interaction.options.getString('ticketId');
 
-app.get('/tickets/:id',async (req, res) =>
-{
-  try
-  {
-    const ticketId = req.params.id;
-
-    // Find the ticket by its ID using the Ticket model
-    const ticket = await Ticket.findById(ticketId);
-
-    // If the ticket is not found, return a 404 response
-    if (!ticket)
-    {
-      return res.status(404).json({ error: 'Ticket not found' });
+  //     // Call the getTicketById function or perform any other required actions to retrieve the ticket
+  //     const ticket = await getTicketById(ticketId);
+  //     if (ticket)
+  //     {
+  //       await interaction.reply(ticket);
+  //     } else
+  //     {
+  //       // If the ticket is not found, send a response indicating that the ticket does not exist
+  //       await interaction.reply('Ticket not found');
+  //     }
     }
+  })
 
-    res.json(ticket);
-  } catch (error)
+app.get('/tickets/:id', async (req, res) =>
+{
+  const ticketId = req.params.id;
+  const ticket = await getTicketById(ticketId);
+  if (ticket)
   {
-    console.error('Error retrieving ticket:', error);
-    res.status(500).json({ error: 'Failed to retrieve ticket' });
+    res.send(ticket);
+  } else
+  {
+    res.status(404).send('Ticket not found');
   }
 });
-  // Start the server
+
+
+   app.use(express.json());
+   // Start the server
   app.listen(port, () =>
   {
     console.log(`Server running on port ${port}`);
